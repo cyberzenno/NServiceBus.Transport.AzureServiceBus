@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Text;
+    using System.Text.RegularExpressions;
     using System.Threading.Tasks;
     using Azure.Core;
     using Azure.Messaging.ServiceBus;
@@ -19,6 +20,17 @@
         static readonly Func<string, string> defaultNameShortener = name => name;
         static readonly Func<string, string> defaultSubscriptionNamingConvention = name => name;
         static readonly Func<Type, string> defaultSubscriptionRuleNamingConvention = type => type.FullName;
+
+        static readonly Func<string, (string, string)> defaultEnvironmentAndGroupConvention = name =>
+        {
+            var regEx = new Regex("[a-zA-Z0-9_]+");
+            var matches = regEx.Matches(name);
+
+            var env = matches[0].Value;
+            var group = matches[1].Value;
+
+            return (env, group);
+        };
 
         readonly SettingsHolder settings;
         readonly ServiceBusAdministrationClient administrationClient;
@@ -202,7 +214,13 @@
                 ruleNamingConvention = defaultSubscriptionRuleNamingConvention;
             }
 
-            return new SubscriptionManager(settings.LocalAddress(), topicName, administrationClient, namespacePermissions, subscriptionNameShortener, ruleNameShortener, subscriptionNamingConvention, ruleNamingConvention);
+            if (!settings.TryGet(SettingsKeys.EnvironmentAndGroupConvention, out Func<string, (string, string)> environmentAndGroupConvention))
+            {
+                environmentAndGroupConvention = defaultEnvironmentAndGroupConvention;
+            }
+
+            return new SubscriptionManager(settings.LocalAddress(), topicName, administrationClient, namespacePermissions, subscriptionNameShortener, ruleNameShortener, subscriptionNamingConvention, ruleNamingConvention,
+                environmentAndGroupConvention);
         }
 
         public override EndpointInstance BindToLocalEndpoint(EndpointInstance instance) => instance;

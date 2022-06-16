@@ -16,5 +16,7 @@
         public const string ServiceBusTransportType = Base + nameof(ServiceBusTransportType);
         public const string CustomTokenCredential = Base + nameof(CustomTokenCredential);
         public const string CustomRetryPolicy = Base + nameof(CustomRetryPolicy);
+
+        public const string EnvironmentAndGroupConvention = Base + nameof(EnvironmentAndGroupConvention);
     }
 }

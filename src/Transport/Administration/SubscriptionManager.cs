@@ -17,6 +17,9 @@
         readonly Func<Type, string> subscriptionRuleNamingConvention;
         readonly string subscriptionName;
 
+        readonly string environmentName;
+        readonly string groupName;
+
         StartupCheckResult startupCheckResult;
 
         public SubscriptionManager(string inputQueueName, string topicPath,
@@ -25,7 +28,9 @@
             Func<string, string> subscriptionShortener,
             Func<string, string> ruleShortener,
             Func<string, string> subscriptionNamingConvention,
-            Func<Type, string> subscriptionRuleNamingConvention)
+            Func<Type, string> subscriptionRuleNamingConvention,
+            Func<string, (string, string)> environmentAndGroupConvention
+            )
         {
             this.topicPath = topicPath;
             this.administrationClient = administrationClient;
@@ -35,6 +40,11 @@
 
             subscriptionName = subscriptionNamingConvention(inputQueueName);
             subscriptionName = subscriptionName.Length > maxNameLength ? subscriptionShortener(subscriptionName) : subscriptionName;
+
+
+            var envGroupTuple = environmentAndGroupConvention(inputQueueName);
+            environmentName = envGroupTuple.Item1;
+            groupName = envGroupTuple.Item2;
         }
 
         public async Task Subscribe(Type eventType, ContextBag context)
@@ -43,7 +53,7 @@
 
             var ruleName = subscriptionRuleNamingConvention(eventType);
             ruleName = ruleName.Length > maxNameLength ? ruleShortener(ruleName) : ruleName;
-            var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%'";
+            var sqlExpression = $"[{Headers.EnclosedMessageTypes}] LIKE '%{eventType.FullName}%' AND Environment = '{environmentName}' AND Group = '{groupName}'";
             var rule = new CreateRuleOptions(ruleName, new SqlRuleFilter(sqlExpression));
 
             try
